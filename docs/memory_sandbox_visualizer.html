@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Interactive Silicon Memory Sandbox & Hardware Cache Hierarchy Visualizer for the Kinesis Low-Level C++20 AI Engine.">
+    <title>Kinesis Memory Sandbox & Cache Hierarchy Visualizer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,600;0,700;1,400&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-base: #06090e;
+            --bg-surface: #0e1520;
+            --bg-elevated: #151f2e;
+            --bg-card: rgba(18, 26, 38, 0.85);
+            --border-subtle: rgba(255, 255, 255, 0.07);
+            --border-focus: rgba(45, 212, 191, 0.4);
+            --accent-teal: #2dd4bf;
+            --accent-teal-glow: rgba(45, 212, 191, 0.25);
+            --accent-gold: #f59e0b;
+            --accent-gold-glow: rgba(245, 158, 11, 0.25);
+            --accent-red: #f43f5e;
+            --accent-red-glow: rgba(244, 63, 94, 0.25);
+            --accent-violet: #a855f7;
+            --accent-blue: #38bdf8;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-base);
+            color: var(--text-primary);
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 2rem 1.5rem;
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 15% 10%, rgba(45, 212, 191, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 85% 90%, rgba(168, 85, 247, 0.06) 0%, transparent 40%);
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 1360px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            margin-bottom: 2rem;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            gap: 1.25rem;
+        }
+
+        .title-group h1 {
+            font-size: 2.25rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, var(--accent-teal) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-top: 0.35rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .badge-bar {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .pill-badge {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(45, 212, 191, 0.1);
+            border: 1px solid rgba(45, 212, 191, 0.3);
+            color: var(--accent-teal);
+            padding: 0.35rem 0.85rem;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+        }
+
+        .pill-badge.purple {
+            background: rgba(168, 85, 247, 0.1);
+            border-color: rgba(168, 85, 247, 0.3);
+            color: var(--accent-violet);
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background-color: currentColor;
+            box-shadow: 0 0 8px currentColor;
+            animation: pulse-dot 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+
+        /* Preset Navigation Controls */
+        .controls-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 1.25rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+        }
+
+        .controls-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .section-label {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            font-weight: 700;
+        }
+
+        .button-cluster {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+        }
+
+        button {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 0.6rem 1.15rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        button:hover {
+            border-color: var(--accent-teal);
+            background: rgba(45, 212, 191, 0.12);
+            color: var(--accent-teal);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        button.btn-primary {
+            background: rgba(45, 212, 191, 0.15);
+            border-color: rgba(45, 212, 191, 0.4);
+            color: var(--accent-teal);
+        }
+
+        button.btn-primary:hover {
+            background: rgba(45, 212, 191, 0.28);
+            box-shadow: 0 0 20px var(--accent-teal-glow);
+        }
+
+        button.btn-warning {
+            background: rgba(245, 158, 11, 0.12);
+            border-color: rgba(245, 158, 11, 0.35);
+            color: var(--accent-gold);
+        }
+
+        button.btn-warning:hover {
+            background: rgba(245, 158, 11, 0.25);
+            box-shadow: 0 0 20px var(--accent-gold-glow);
+        }
+
+        button.btn-danger {
+            background: rgba(244, 63, 94, 0.12);
+            border-color: rgba(244, 63, 94, 0.35);
+            color: var(--accent-red);
+        }
+
+        button.btn-danger:hover {
+            background: rgba(244, 63, 94, 0.25);
+            box-shadow: 0 0 20px var(--accent-red-glow);
+        }
+
+        button.btn-reset {
+            background: transparent;
+            border-color: rgba(255, 255, 255, 0.12);
+            color: var(--text-secondary);
+        }
+
+        /* Dashboard Grid */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: var(--bg-card);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 1.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+            display: flex;
+            flex-direction: column;
+            transition: border-color 0.2s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .card-col-6 { grid-column: span 6; }
+        .card-col-12 { grid-column: span 12; }
+        .card-col-4 { grid-column: span 4; }
+        .card-col-8 { grid-column: span 8; }
+
+        @media (max-width: 1024px) {
+            .card-col-6, .card-col-4, .card-col-8 { grid-column: span 12; }
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.25rem;
+            border-bottom: 1px solid var(--border-subtle);
+            padding-bottom: 0.75rem;
+        }
+
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-title-icon {
+            color: var(--accent-teal);
+        }
+
+        /* Meters & Gauges */
+        .meter-container {
+            margin-bottom: 1.25rem;
+        }
+
+        .meter-label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 0.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .meter-label {
+            color: var(--text-secondary);
+        }
+
+        .meter-val-large {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: var(--accent-teal);
+        }
+
+        .progress-track {
+            height: 14px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-subtle);
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981 0%, var(--accent-teal) 100%);
+            border-radius: 8px;
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 0%;
+            box-shadow: 0 0 12px var(--accent-teal-glow);
+        }
+
+        .progress-bar-fill.conflict {
+            background: linear-gradient(90deg, var(--accent-gold) 0%, var(--accent-red) 100%);
+            box-shadow: 0 0 12px var(--accent-red-glow);
+        }
+
+        /* Stats List */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-top: auto;
+        }
+
+        .stat-item {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-name {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-top: 0.25rem;
+        }
+
+        /* 32-Bank Grid */
+        .banks-wrapper {
+            margin-top: 1rem;
+        }
+
+        .banks-grid {
+            display: grid;
+            grid-template-columns: repeat(16, 1fr);
+            gap: 5px;
+        }
+
+        @media (max-width: 640px) {
+            .banks-grid { grid-template-columns: repeat(8, 1fr); }
+        }
+
+        .bank-slot {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 6px;
+            padding: 0.45rem 0.2rem;
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.25s ease;
+        }
+
+        .bank-idx {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            display: block;
+        }
+
+        .bank-threads {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-secondary);
+        }
+
+        .bank-slot.active-ok {
+            background: rgba(45, 212, 191, 0.15);
+            border-color: var(--accent-teal);
+            color: var(--accent-teal);
+        }
+
+        .bank-slot.active-ok .bank-threads {
+            color: var(--accent-teal);
+        }
+
+        .bank-slot.conflict {
+            background: rgba(244, 63, 94, 0.25);
+            border-color: var(--accent-red);
+            animation: pulse-conflict 1s infinite alternate;
+        }
+
+        .bank-slot.conflict .bank-threads {
+            color: var(--accent-red);
+            font-weight: 800;
+        }
+
+        @keyframes pulse-conflict {
+            0% { transform: scale(1); box-shadow: 0 0 5px rgba(244, 63, 94, 0.2); }
+            100% { transform: scale(1.08); box-shadow: 0 0 15px rgba(244, 63, 94, 0.6); }
+        }
+
+        /* Live Latency Comparison Gauge */
+        .latency-gauge-row {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-top: 1rem;
+        }
+
+        .latency-badge {
+            font-family: 'JetBrains Mono', monospace;
+            padding: 0.5rem 0.8rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-align: center;
+            min-width: 110px;
+        }
+
+        .latency-hit {
+            background: rgba(45, 212, 191, 0.15);
+            border: 1px solid var(--accent-teal);
+            color: var(--accent-teal);
+        }
+
+        .latency-miss {
+            background: rgba(244, 63, 94, 0.15);
+            border: 1px solid var(--accent-red);
+            color: var(--accent-red);
+        }
+
+        .latency-explainer {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Interactive Address Prober Card */
+        .prober-form {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 1rem;
+            align-items: flex-end;
+            margin-bottom: 1.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .prober-form { grid-template-columns: 1fr; }
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .input-group label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.05em;
+        }
+
+        .input-control {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 0.6rem 0.85rem;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .input-control:focus {
+            border-color: var(--accent-teal);
+            box-shadow: 0 0 10px var(--accent-teal-glow);
+        }
+
+        .probe-result-box {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+        }
+
+        .probe-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .probe-field span:first-child {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .probe-field span:last-child {
+            font-size: 1rem;
+            font-weight: 700;
+            color: var(--accent-teal);
+        }
+
+        /* Stride Interactive Slider & Swizzle Toggle */
+        .slider-panel {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-top: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .slider-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .slider-track {
+            flex: 1;
+            height: 6px;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .slider-track::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--accent-teal);
+            cursor: pointer;
+            box-shadow: 0 0 10px var(--accent-teal);
+            transition: transform 0.15s ease;
+        }
+
+        .slider-track::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            cursor: pointer;
+            user-select: none;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .toggle-checkbox {
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            border: 1px solid var(--border-subtle);
+            background: var(--bg-elevated);
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            outline: none;
+        }
+
+        .toggle-checkbox:checked {
+            background: var(--accent-teal);
+            border-color: var(--accent-teal);
+        }
+
+        .toggle-checkbox:checked::after {
+            content: '✓';
+            color: var(--bg-base);
+            font-weight: 800;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.75rem;
+        }
+
+        /* 64-Set Cache Matrix Visualizer */
+        .cache-matrix-container {
+            margin-top: 1rem;
+            max-height: 220px;
+            overflow-y: auto;
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            background: #03060a;
+            padding: 0.5rem;
+        }
+
+        .cache-matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
+        }
+
+        @media (max-width: 640px) {
+            .cache-matrix-grid { grid-template-columns: repeat(4, 1fr); }
+        }
+
+        .set-box {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            padding: 0.35rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            transition: all 0.2s ease;
+        }
+
+        .set-box.active-set {
+            background: rgba(45, 212, 191, 0.15);
+            border-color: var(--accent-teal);
+            box-shadow: 0 0 10px var(--accent-teal-glow);
+        }
+
+        .set-header {
+            color: var(--text-muted);
+            font-size: 0.6rem;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .set-ways-bar {
+            display: flex;
+            gap: 2px;
+            margin-top: 0.25rem;
+        }
+
+        .way-indicator {
+            flex: 1;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 1px;
+        }
+
+        .way-indicator.filled {
+            background: var(--accent-teal);
+        }
+
+        /* Telemetry Console / Event Log */
+        .log-box {
+            background: #030609;
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            height: 190px;
+            overflow-y: auto;
+            color: #cbd5e1;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .log-entry {
+            margin-bottom: 0.35rem;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .log-time {
+            color: var(--text-muted);
+            user-select: none;
+        }
+
+        .log-success { color: var(--accent-teal); }
+        .log-warn { color: var(--accent-gold); }
+        .log-danger { color: var(--accent-red); }
+        .log-info { color: var(--accent-blue); }
+
+        /* Footer */
+        footer {
+            margin-top: 3rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-subtle);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .footer-links {
+            display: flex;
+            gap: 1.5rem;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--accent-teal);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="title-group">
+                <h1>Kinesis Silicon Memory Sandbox</h1>
+                <div class="subtitle">
+                    <span>Hardware L1/L2 Cache Hierarchy & 32-Bank GPU Shared Coherence Simulator</span>
+                </div>
+            </div>
+            <div class="badge-bar">
+                <div class="pill-badge">
+                    <div class="status-dot"></div>
+                    <span>Deterministic Engine</span>
+                </div>
+                <div class="pill-badge purple">
+                    <span>C++20 Zero-Copy</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Presets & Execution Control Card -->
+        <div class="controls-card">
+            <div class="controls-header">
+                <span class="section-label">Hardware Simulation Workload Presets</span>
+                <span style="font-family: 'JetBrains Mono'; font-size: 0.75rem; color: var(--text-muted);">Select a pattern to simulate silicon memory traversal:</span>
+            </div>
+            <div class="button-cluster">
+                <button class="btn-primary" id="btn-seq" onclick="runSequential()">
+                    <span style="font-size: 1rem;">⚡</span> GotoBLAS Packed Panel (Stride 1)
+                </button>
+                <button class="btn-warning" id="btn-strided" onclick="runStrided()">
+                    <span style="font-size: 1rem;">⚠️</span> Strided Row Traverse (Stride 64 / Thrashing)
+                </button>
+                <button class="btn-primary" id="btn-warp-ok" onclick="runWarpCoalesced()">
+                    <span style="font-size: 1rem;">🟢</span> Warp Stride 4 (Coalesced 0-Conflict)
+                </button>
+                <button class="btn-danger" id="btn-warp-bad" onclick="runWarpConflicted()">
+                    <span style="font-size: 1rem;">🔴</span> Warp Stride 128 (32-Way Serialized Conflict)
+                </button>
+                <button class="btn-primary" id="btn-warp-swizzle" onclick="runWarpSwizzled()">
+                    <span style="font-size: 1rem;">✨</span> Apply XOR Swizzle Optimization
+                </button>
+                <button class="btn-reset" onclick="resetSandbox()">
+                    ↺ Reset Sandbox
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Dashboard 2-Column Grid -->
+        <div class="dashboard-grid">
+            <!-- Left Column: L1 Cache Hierarchy -->
+            <div class="card card-col-6">
+                <div class="card-header">
+                    <span class="card-title">
+                        <span class="card-title-icon">▤</span> L1 Data Cache (32 KB, 8-Way Associative)
+                    </span>
+                    <span class="pill-badge" id="l1-status">Idle</span>
+                </div>
+
+                <div class="meter-container">
+                    <div class="meter-label-row">
+                        <span class="meter-label">Simulated L1 Cache Hit Rate</span>
+                        <span class="meter-val-large" id="l1-hit-rate">0.0%</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-bar-fill" id="l1-bar"></div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-name">Total Accesses</span>
+                        <span class="stat-val" id="l1-accesses">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-name">L1 Hits (~30 Cycles)</span>
+                        <span class="stat-val" id="l1-hits" style="color: var(--accent-teal);">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-name">L1 Misses (~500 Cycles)</span>
+                        <span class="stat-val" id="l1-misses" style="color: var(--accent-red);">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-name">Cache-Line Splits</span>
+                        <span class="stat-val" id="line-splits" style="color: var(--accent-gold);">0</span>
+                    </div>
+                </div>
+
+                <!-- Latency Gauge Comparison -->
+                <div class="latency-gauge-row">
+                    <div class="latency-badge latency-hit" id="latency-badge-hit">30 CYCLES</div>
+                    <div class="latency-explainer">
+                        <strong>Charles Grassi Waterfall:</strong> L1 Hits resolve in ~30 cycles. Cold VRAM DRAM fetches require <strong>~500 cycles (16.7× penalty)</strong>, stalling the execution pipeline.
+                    </div>
+                </div>
+
+                <!-- 64-Set Cache Visual Inspection Matrix -->
+                <div style="margin-top: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <span class="section-label">L1 Cache Sets Matrix (64 Sets, 8 Ways Each)</span>
+                        <span style="font-family: 'JetBrains Mono'; font-size: 0.7rem; color: var(--text-muted);" id="active-set-indicator">Active Set: None</span>
+                    </div>
+                    <div class="cache-matrix-container">
+                        <div class="cache-matrix-grid" id="cache-matrix"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: GPU 32-Bank Shared Memory -->
+            <div class="card card-col-6">
+                <div class="card-header">
+                    <span class="card-title">
+                        <span class="card-title-icon">▦</span> GPU 32-Bank Shared Memory Coalescing
+                    </span>
+                    <span class="pill-badge" id="bank-status">Warp Idle</span>
+                </div>
+
+                <div class="meter-container">
+                    <div class="meter-label-row">
+                        <span class="meter-label">Warp Conflict Serialization Multiplier</span>
+                        <span class="meter-val-large" id="conflict-degree" style="color: var(--text-primary);">1.0x</span>
+                    </div>
+                    <div class="progress-track">
+                        <div class="progress-bar-fill conflict" id="conflict-bar"></div>
+                    </div>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-name">Active Warp Size</span>
+                        <span class="stat-val">32 Threads</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-name">Physical Bank Width</span>
+                        <span class="stat-val">4 Bytes (f32)</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-name">Hardware Waveform</span>
+                        <span class="stat-val" id="stat-waveform">SIMT Lockstep</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-name">Max Simultaneous Hits</span>
+                        <span class="stat-val" id="stat-max-hits" style="color: var(--accent-teal);">1</span>
+                    </div>
+                </div>
+
+                <!-- 32-Bank Visual Distribution -->
+                <div class="banks-wrapper">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;">
+                        <span class="section-label">Shared Memory Banks (0-31)</span>
+                        <span style="font-family: 'JetBrains Mono'; font-size: 0.75rem; color: var(--text-muted);">Thread Count per Bank</span>
+                    </div>
+                    <div class="banks-grid" id="banks-container"></div>
+                </div>
+
+                <!-- Real-time Stride Slider & XOR Swizzle Toggle -->
+                <div class="slider-panel">
+                    <div class="slider-row">
+                        <label style="font-family: 'JetBrains Mono'; font-size: 0.8rem; color: var(--text-secondary);" for="stride-slider">
+                            Warp Stride: <b id="stride-val-label" style="color: var(--accent-teal);">4</b> Bytes (<span id="stride-float-label">1</span> Float)
+                        </label>
+                        <input type="range" class="slider-track" id="stride-slider" min="4" max="256" step="4" value="4" oninput="onStrideSliderChange(this.value)">
+                    </div>
+                    <label class="toggle-row">
+                        <input type="checkbox" class="toggle-checkbox" id="swizzle-toggle" onchange="onSwizzleToggleChange(this.checked)">
+                        <span>Apply XOR Swizzling: <code>col' = col XOR (lane &amp; 31)</code>, <code>bank = (lane*stride/4 + col') % 32</code><br><small style="color: var(--text-secondary);">Unswizzled conflict degree is gcd(stride/4, 32). 32 banks assumes compute capability 2.0 or later; CC 1.x has 16 banks and CC 3.x has a selectable 4- or 8-byte bank width.</small></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Bottom Row: Manual Address Prober & Telemetry Trace Log -->
+            <div class="card card-col-12">
+                <div class="card-header">
+                    <span class="card-title">
+                        <span class="card-title-icon">🎯</span> Interactive Hardware Address Prober & Telemetry Trace
+                    </span>
+                    <span style="font-family: 'JetBrains Mono'; font-size: 0.75rem; color: var(--text-secondary);">Direct Silicon Geometry Inspection</span>
+                </div>
+
+                <!-- Prober Input Form -->
+                <div class="prober-form">
+                    <div class="input-group">
+                        <label for="probe-addr">Memory Address (Hex or Decimal)</label>
+                        <input type="text" class="input-control" id="probe-addr" value="0x00042000" placeholder="e.g. 0x20000 or 131072">
+                    </div>
+                    <div class="input-group">
+                        <label for="probe-size">Data Size</label>
+                        <select class="input-control" id="probe-size">
+                            <option value="4" selected>4 Bytes (f32)</option>
+                            <option value="8">8 Bytes (f64 / v2)</option>
+                            <option value="16">16 Bytes (v4 / RGBA)</option>
+                            <option value="32">32 Bytes (AVX / Sector)</option>
+                            <option value="64">64 Bytes (Full Cache Line)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>&nbsp;</label>
+                        <button class="btn-primary" onclick="probeManualAddress()">Probe Silicon Address</button>
+                    </div>
+                    <div class="input-group">
+                        <label>&nbsp;</label>
+                        <button class="btn-warning" onclick="probeSplitTest()">Trigger Cache-Line Split</button>
+                    </div>
+                </div>
+
+                <!-- Probe Result Details -->
+                <div class="probe-result-box" id="probe-result-box">
+                    <div class="probe-field">
+                        <span>Physical Tag</span>
+                        <span id="res-tag">0x00000000</span>
+                    </div>
+                    <div class="probe-field">
+                        <span>L1 Set Index (0-63)</span>
+                        <span id="res-set">0</span>
+                    </div>
+                    <div class="probe-field">
+                        <span>Cache-Line Offset (0-63)</span>
+                        <span id="res-offset">0 Bytes</span>
+                    </div>
+                    <div class="probe-field">
+                        <span>Cache-Line Split Hazard</span>
+                        <span id="res-split" style="color: var(--accent-teal);">NO (Aligned)</span>
+                    </div>
+                    <div class="probe-field">
+                        <span>Hit / Miss Outcome</span>
+                        <span id="res-hit" style="color: var(--text-secondary);">Awaiting Probe</span>
+                    </div>
+                </div>
+
+                <!-- Event Trace Log -->
+                <div style="margin-top: 1.25rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem;">
+                        <span class="section-label">Real-Time Silicon Telemetry Log</span>
+                        <span style="font-family: 'JetBrains Mono'; font-size: 0.75rem; color: var(--text-muted);">Chronological Event Stream</span>
+                    </div>
+                    <div class="log-box" id="log-box"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <div>
+                <strong>Kinesis AI Engine</strong>, Modern C++20 Zero-Allocation Neural & Robotics Mathematics
+            </div>
+            <div class="footer-links">
+                <a href="https://charlesgrassi.dev/blog/gpu-cache-hierarchy/" target="_blank" rel="noopener">Grassi Cache Literature</a>
+                <a href="ARCHITECTURE.md">Architecture Spec</a>
+                <a href="BENCHMARKS.md">Latency Benchmarks</a>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // --- HARDWARE SIMULATION STATE ---
+        const L1_SIZE = 32 * 1024;      // 32 KB
+        const LINE_SIZE = 64;            // 64 Bytes
+        const ASSOCIATIVITY = 8;         // 8-way set associative
+        const NUM_SETS = L1_SIZE / (LINE_SIZE * ASSOCIATIVITY); // 64 sets
+
+        let l1Accesses = 0;
+        let l1Hits = 0;
+        let l1Misses = 0;
+        let lineSplits = 0;
+
+        // SetIndex -> Array of Tags (ordered by LRU, index 0 is LRU, end is MRU)
+        const l1Sets = Array.from({ length: NUM_SETS }, () => []);
+
+        // --- DOM INITIALIZATION ---
+        const banksContainer = document.getElementById('banks-container');
+        for (let i = 0; i < 32; ++i) {
+            const slot = document.createElement('div');
+            slot.className = 'bank-slot';
+            slot.id = 'bank-slot-' + i;
+            slot.innerHTML = `<span class="bank-idx">${i}</span><span class="bank-threads" id="bank-val-${i}">0</span>`;
+            banksContainer.appendChild(slot);
+        }
+
+        const cacheMatrix = document.getElementById('cache-matrix');
+        for (let s = 0; s < NUM_SETS; ++s) {
+            const box = document.createElement('div');
+            box.className = 'set-box';
+            box.id = 'set-box-' + s;
+            box.innerHTML = `
+                <div class="set-header"><span>S${s}</span><span id="set-cnt-${s}">0/8</span></div>
+                <div class="set-ways-bar" id="set-ways-${s}">
+                    ${Array.from({ length: 8 }, (_, w) => `<div class="way-indicator" id="way-${s}-${w}"></div>`).join('')}
+                </div>
+            `;
+            cacheMatrix.appendChild(box);
+        }
+
+        function logTelemetry(msg, level = 'log-info') {
+            const box = document.getElementById('log-box');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + level;
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}.${String(Math.floor(now.getMilliseconds()/10)).padStart(2, '0')}`;
+            entry.innerHTML = `<span class="log-time">[${timeStr}]</span> <span>${msg}</span>`;
+            box.appendChild(entry);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function accessL1Memory(address, size = 4) {
+            l1Accesses++;
+            const startLine = Math.floor(address / LINE_SIZE);
+            const endLine = Math.floor((address + size - 1) / LINE_SIZE);
+
+            const isSplit = (startLine !== endLine);
+            if (isSplit) {
+                lineSplits++;
+            }
+
+            const setIndex = startLine % NUM_SETS;
+            const tag = Math.floor(startLine / NUM_SETS);
+
+            const ways = l1Sets[setIndex];
+            const hitIndex = ways.indexOf(tag);
+            let isHit = false;
+
+            if (hitIndex !== -1) {
+                l1Hits++;
+                isHit = true;
+                // Move to MRU position (push to back)
+                ways.splice(hitIndex, 1);
+                ways.push(tag);
+            } else {
+                l1Misses++;
+                isHit = false;
+                // Evict LRU if set is full
+                if (ways.length >= ASSOCIATIVITY) {
+                    ways.shift();
+                }
+                ways.push(tag);
+            }
+
+            // Update set UI
+            updateSetVisual(setIndex);
+            return { setIndex, tag, offset: address % LINE_SIZE, isSplit, isHit };
+        }
+
+        function updateSetVisual(setIndex) {
+            const ways = l1Sets[setIndex];
+            const cnt = document.getElementById('set-cnt-' + setIndex);
+            if (cnt) cnt.textContent = `${ways.length}/8`;
+
+            for (let w = 0; w < ASSOCIATIVITY; ++w) {
+                const indicator = document.getElementById(`way-${setIndex}-${w}`);
+                if (indicator) {
+                    if (w < ways.length) {
+                        indicator.classList.add('filled');
+                    } else {
+                        indicator.classList.remove('filled');
+                    }
+                }
+            }
+
+            // Flash active set
+            const prevActive = document.querySelector('.set-box.active-set');
+            if (prevActive) prevActive.classList.remove('active-set');
+            const currentBox = document.getElementById('set-box-' + setIndex);
+            if (currentBox) currentBox.classList.add('active-set');
+            document.getElementById('active-set-indicator').textContent = `Active Set: S${setIndex} (Tag: 0x${ways[ways.length-1].toString(16)})`;
+        }
+
+        function updateDashboardUI() {
+            document.getElementById('l1-accesses').textContent = l1Accesses.toLocaleString();
+            document.getElementById('l1-hits').textContent = l1Hits.toLocaleString();
+            document.getElementById('l1-misses').textContent = l1Misses.toLocaleString();
+            document.getElementById('line-splits').textContent = lineSplits.toLocaleString();
+
+            const hitRate = l1Accesses === 0 ? 0 : (l1Hits / l1Accesses * 100);
+            document.getElementById('l1-hit-rate').textContent = hitRate.toFixed(1) + '%';
+            document.getElementById('l1-bar').style.width = hitRate + '%';
+
+            const statusBadge = document.getElementById('l1-status');
+            if (l1Accesses === 0) {
+                statusBadge.textContent = 'Idle';
+                statusBadge.style.color = 'var(--accent-teal)';
+            } else if (hitRate >= 85) {
+                statusBadge.textContent = 'Optimal (>85%)';
+                statusBadge.style.color = 'var(--accent-teal)';
+            } else if (hitRate >= 50) {
+                statusBadge.textContent = 'Moderate';
+                statusBadge.style.color = 'var(--accent-gold)';
+            } else {
+                statusBadge.textContent = 'Thrashing (<50%)';
+                statusBadge.style.color = 'var(--accent-red)';
+            }
+        }
+
+        function setBankDistribution(counts) {
+            let maxConflict = 1;
+            for (let b = 0; b < 32; ++b) {
+                const slot = document.getElementById('bank-slot-' + b);
+                const val = document.getElementById('bank-val-' + b);
+                val.textContent = counts[b];
+                slot.className = 'bank-slot';
+
+                if (counts[b] === 1) {
+                    slot.classList.add('active-ok');
+                } else if (counts[b] > 1) {
+                    slot.classList.add('conflict');
+                    if (counts[b] > maxConflict) maxConflict = counts[b];
+                }
+            }
+
+            document.getElementById('stat-max-hits').textContent = maxConflict;
+            document.getElementById('conflict-degree').textContent = `${maxConflict.toFixed(1)}x`;
+            const conflictPct = maxConflict <= 1 ? 0 : ((maxConflict - 1) / 31 * 100);
+            document.getElementById('conflict-bar').style.width = conflictPct + '%';
+
+            const bankBadge = document.getElementById('bank-status');
+            if (maxConflict === 1) {
+                bankBadge.textContent = 'Coalesced (0 Hazard)';
+                bankBadge.style.color = 'var(--accent-teal)';
+                document.getElementById('stat-waveform').textContent = 'Single Transaction';
+            } else {
+                bankBadge.textContent = `Hazard: ${maxConflict}x Serialized`;
+                bankBadge.style.color = 'var(--accent-red)';
+                document.getElementById('stat-waveform').textContent = `${maxConflict} Sequential Cycles`;
+            }
+        }
+
+        // --- PRESET ACTIONS ---
+        function runSequential() {
+            logTelemetry('Executing GotoBLAS Micro-Panel Sequential Stream (Stride 1 float, 512 elements)...', 'log-info');
+            for (let i = 0; i < 512; ++i) {
+                accessL1Memory(0x00040000 + i * 4, 4);
+            }
+            updateDashboardUI();
+            const hitRate = (l1Hits / l1Accesses * 100).toFixed(1);
+            logTelemetry(`GotoBLAS Micro-Panel Complete: 512 contiguous accesses. L1 Hit Rate reached ${hitRate}%!`, 'log-success');
+        }
+
+        function runStrided() {
+            logTelemetry('Executing Naive Matrix Strided Column Sweep (Stride 64 floats = 256 bytes, 128 steps)...', 'log-warn');
+            for (let i = 0; i < 128; ++i) {
+                accessL1Memory(0x00080000 + i * 256, 4);
+            }
+            updateDashboardUI();
+            logTelemetry(`Strided Sweep Complete: High L1 cache miss rate observed due to non-unit stride hopping cache lines!`, 'log-danger');
+        }
+
+        // Greatest common divisor: for a warp of 32 lanes reading at a constant stride of
+        // `strideWords` 4-byte words across 32 banks, the number of lanes landing on the
+        // busiest bank is exactly gcd(strideWords, 32). Any odd stride is conflict-free; only
+        // a multiple of 32 produces the full 32-way serialisation.
+        function gcd(a, b) {
+            while (b !== 0) { const t = a % b; a = b; b = t; }
+            return a;
+        }
+
+        // Bank touched by lane `t` reading column `column` of a row-major tile whose rows are
+        // `strideWords` words apart.
+        //
+        // The swizzle permutes the column *within each row* -- col' = col XOR (row & 31) --
+        // which is the form used in CUDA shared-memory tiles. It changes which word a lane
+        // reads, not just which bank it is charged to, so it does not always help. Reading
+        // column 0, lane t lands on bank (t*s + t) mod 32 = (s + 1)*t mod 32, which is
+        // conflict-free exactly when s + 1 is odd. So every even stride -- including the 32-way
+        // case s = 32 and s = 16 -- becomes conflict-free, while every odd stride, all of which
+        // were already conflict-free, picks up a conflict (s = 1 and 33 become 2-way, s = 3
+        // becomes 4-way). That asymmetry is the point: a swizzle is chosen for a layout, not
+        // applied blindly.
+        function bankOfLane(t, strideWords, column, useSwizzle) {
+            const col = useSwizzle ? (column ^ (t & 31)) : column;
+            return (((t * strideWords + col) % 32) + 32) % 32;
+        }
+
+        function simulateWarp(strideBytes, useSwizzle = false) {
+            const strideWords = Math.floor(strideBytes / 4);
+            const counts = new Array(32).fill(0);
+            for (let t = 0; t < 32; ++t) {
+                counts[bankOfLane(t, strideWords, 0, useSwizzle)]++;
+            }
+            setBankDistribution(counts);
+            return { counts, predicted: gcd(strideWords, 32), strideWords };
+        }
+
+        function runWarpCoalesced() {
+            logTelemetry('Simulating Warp Access: 32 threads with Stride 4 bytes (1 float per thread)...', 'log-info');
+            document.getElementById('stride-slider').value = 4;
+            document.getElementById('swizzle-toggle').checked = false;
+            document.getElementById('stride-val-label').textContent = '4';
+            document.getElementById('stride-float-label').textContent = '1';
+            simulateWarp(4, false);
+            logTelemetry('Conflict-free: stride 4 B = 1 word, and gcd(1, 32) = 1, so the 32 lanes cover the 32 banks exactly once. Every odd word stride behaves the same way.', 'log-success');
+        }
+
+        function runWarpConflicted() {
+            logTelemetry('Simulating Warp Access: 32 threads with Stride 128 bytes (powers-of-two matrix jump)...', 'log-danger');
+            document.getElementById('stride-slider').value = 128;
+            document.getElementById('swizzle-toggle').checked = false;
+            document.getElementById('stride-val-label').textContent = '128';
+            document.getElementById('stride-float-label').textContent = '32';
+            simulateWarp(128, false);
+            logTelemetry('32-way bank conflict: stride 128 B = 32 words, and gcd(32, 32) = 32, so every lane lands on bank 0 and the access serialises over 32 cycles.', 'log-danger');
+        }
+
+        function runWarpSwizzled() {
+            const stride = parseInt(document.getElementById('stride-slider').value, 10);
+            logTelemetry('Applying XOR swizzle: col\' = col XOR (lane AND 31)...', 'log-info');
+            document.getElementById('swizzle-toggle').checked = true;
+            const before = simulateWarp(stride, false).counts.reduce((a, b) => Math.max(a, b), 0);
+            const res = simulateWarp(stride, true);
+            const after = res.counts.reduce((a, b) => Math.max(a, b), 0);
+            if (after < before) {
+                logTelemetry(`Swizzle reduced the conflict from ${before}-way to ${after}-way at stride ${res.strideWords} words.`, 'log-success');
+            } else if (after === before) {
+                logTelemetry(`No change: stride ${res.strideWords} words was already ${before}-way (gcd(${res.strideWords}, 32) = ${res.predicted}).`, 'log-warn');
+            } else {
+                logTelemetry(`Swizzle made this worse: ${before}-way to ${after}-way. A swizzle is chosen for a layout, not applied blindly.`, 'log-danger');
+            }
+        }
+
+        function onStrideSliderChange(val) {
+            const stride = parseInt(val, 10);
+            document.getElementById('stride-val-label').textContent = stride;
+            document.getElementById('stride-float-label').textContent = stride / 4;
+            const useSwizzle = document.getElementById('swizzle-toggle').checked;
+            simulateWarp(stride, useSwizzle);
+        }
+
+        function onSwizzleToggleChange(checked) {
+            const stride = parseInt(document.getElementById('stride-slider').value, 10);
+            simulateWarp(stride, checked);
+            if (checked) {
+                logTelemetry(`XOR Swizzling enabled for stride ${stride} bytes.`, 'log-info');
+            } else {
+                logTelemetry(`XOR Swizzling disabled.`, 'log-warn');
+            }
+        }
+
+        function probeManualAddress() {
+            const rawAddr = document.getElementById('probe-addr').value.trim();
+            const size = parseInt(document.getElementById('probe-size').value, 10);
+
+            let address = 0;
+            if (rawAddr.startsWith('0x') || rawAddr.startsWith('0X')) {
+                address = parseInt(rawAddr, 16);
+            } else {
+                address = parseInt(rawAddr, 10);
+            }
+
+            if (isNaN(address) || address < 0) {
+                alert('Please enter a valid memory address (e.g. 0x20000 or 131072)');
+                return;
+            }
+
+            const res = accessL1Memory(address, size);
+            updateDashboardUI();
+
+            document.getElementById('res-tag').textContent = '0x' + res.tag.toString(16).toUpperCase().padStart(8, '0');
+            document.getElementById('res-set').textContent = res.setIndex;
+            document.getElementById('res-offset').textContent = res.offset + ' Bytes';
+
+            const splitEl = document.getElementById('res-split');
+            if (res.isSplit) {
+                splitEl.textContent = 'YES (Splits 2 Cache Lines!)';
+                splitEl.style.color = 'var(--accent-red)';
+            } else {
+                splitEl.textContent = 'NO (Aligned within Line)';
+                splitEl.style.color = 'var(--accent-teal)';
+            }
+
+            const hitEl = document.getElementById('res-hit');
+            if (res.isHit) {
+                hitEl.textContent = 'L1 CACHE HIT (~30 CYCLES)';
+                hitEl.style.color = 'var(--accent-teal)';
+                logTelemetry(`Probe [0x${address.toString(16).toUpperCase()}]: L1 HIT at Set ${res.setIndex}, Tag 0x${res.tag.toString(16)}. (~30 cycles)`, 'log-success');
+            } else {
+                hitEl.textContent = 'L1 CACHE MISS (~500 CYCLES)';
+                hitEl.style.color = 'var(--accent-red)';
+                logTelemetry(`Probe [0x${address.toString(16).toUpperCase()}]: L1 MISS at Set ${res.setIndex}, Tag 0x${res.tag.toString(16)}. Stalled ~500 cycles to VRAM DRAM.`, 'log-danger');
+            }
+        }
+
+        function probeSplitTest() {
+            // Address 62 with 4 bytes crosses boundary between line 0 (0..63) and line 1 (64..127)
+            const splitAddr = 0x0004003E; // 62 in decimal
+            document.getElementById('probe-addr').value = '0x0004003E';
+            document.getElementById('probe-size').value = '4';
+            probeManualAddress();
+            logTelemetry('Cache-Line Split Triggered! Word at byte 62 crosses from cache line 0 to cache line 1, requiring 2 physical bus cycles!', 'log-warn');
+        }
+
+        function resetSandbox() {
+            l1Accesses = 0;
+            l1Hits = 0;
+            l1Misses = 0;
+            lineSplits = 0;
+
+            for (let s = 0; s < NUM_SETS; ++s) {
+                l1Sets[s] = [];
+                updateSetVisual(s);
+            }
+
+            setBankDistribution(new Array(32).fill(0));
+            updateDashboardUI();
+
+            document.getElementById('res-tag').textContent = '0x00000000';
+            document.getElementById('res-set').textContent = '0';
+            document.getElementById('res-offset').textContent = '0 Bytes';
+            document.getElementById('res-split').textContent = 'NO (Aligned)';
+            document.getElementById('res-split').style.color = 'var(--accent-teal)';
+            document.getElementById('res-hit').textContent = 'Awaiting Probe';
+            document.getElementById('res-hit').style.color = 'var(--text-secondary)';
+            document.getElementById('active-set-indicator').textContent = 'Active Set: None';
+
+            logTelemetry('Sandbox state completely flushed and reset to clean baseline.', 'log-info');
+        }
+
+        // Initialize telemetry on boot
+        logTelemetry('Kinesis Memory Sandbox initialized. Ready for hardware cache hierarchy simulation.', 'log-success');
+        updateDashboardUI();
+        setBankDistribution(new Array(32).fill(0));
+    </script>
+</body>
+</html>

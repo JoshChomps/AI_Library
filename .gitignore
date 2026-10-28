@@ -1,0 +1,34 @@
+# Build directories and executables
+bin/
+build/
+*.exe
+*.obj
+*.o
+*.a
+*.lib
+*.dll
+*.so
+*.dylib
+*.pdb
+*.ilk
+
+# IDE & Editor artifacts
+.vs/
+.vscode/
+compile_commands.json
+.cache/
+zig-cache/
+zig-out/
+
+# OS artifacts
+Thumbs.db
+.DS_Store
+
+# Local-only files: AI tool configs, interview notes, secrets, editor locks
+CLAUDE.md
+AGENTS.md
+.claude/
+PROF_QA.md
+HANDOFF*.md
+.env
+*.lck
